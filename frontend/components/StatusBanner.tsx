@@ -1,8 +1,10 @@
 "use client";
 
-import { CheckCircle2, AlertTriangle, XCircle, Download, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, AlertTriangle, XCircle, Download, RotateCcw, Server } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { SmartlinkButton } from "@/components/ads/SmartlinkAd";
+import { BackendConfigModal } from "@/components/BackendConfigModal";
 
 interface StatusBannerProps {
   status: "completed" | "failed" | "cancelled";
@@ -23,6 +25,14 @@ export function StatusBanner({
   onRetry,
   onReset,
 }: StatusBannerProps) {
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+
+  const isBackendIssue =
+    Boolean(message) &&
+    (message!.includes("Backend") ||
+      message!.includes("connect") ||
+      message!.includes("reach") ||
+      message!.includes("HTML"));
   if (status === "completed") {
     return (
       <div className="w-full bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 shadow-xl shadow-emerald-500/5 text-center space-y-4 animate-in fade-in zoom-in-95">
@@ -91,6 +101,17 @@ export function StatusBanner({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {isBackendIssue && (
+            <button
+              type="button"
+              onClick={() => setIsConfigOpen(true)}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-md shadow-brand-600/25 transition-all"
+            >
+              <Server className="w-4 h-4" />
+              <span>Configure Backend Server</span>
+            </button>
+          )}
+
           {onRetry && (
             <button
               type="button"
@@ -110,6 +131,12 @@ export function StatusBanner({
             <span>Try Another Link</span>
           </button>
         </div>
+
+        <BackendConfigModal
+          isOpen={isConfigOpen}
+          onClose={() => setIsConfigOpen(false)}
+          onSaved={onRetry}
+        />
       </div>
     );
   }

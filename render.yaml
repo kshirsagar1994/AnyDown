@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: anydown-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: FRONTEND_ORIGIN
+        value: "*"
+      - key: MAX_DOWNLOAD_BYTES
+        value: 524288000
+      - key: FILE_RETENTION_SECONDS
+        value: 900

@@ -1,0 +1,11 @@
+# Run Backend:
+cd c:\Users\ajaya\OneDrive\Desktop\AnyDown\backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Run Frontend (Development):
+cd c:\Users\ajaya\OneDrive\Desktop\AnyDown\frontend
+npm run dev
+
+# Generate Shared Hosting Static Export:
+cd c:\Users\ajaya\OneDrive\Desktop\AnyDown\frontend
+$env:NEXT_EXPORT="true"; npm run build

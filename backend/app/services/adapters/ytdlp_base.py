@@ -19,62 +19,134 @@ import httpx
 
 def map_ytdlp_error(error_msg: str) -> Exception:
     err = error_msg.lower()
-    if "sign in to confirm you’re not a bot" in err or "sign in to confirm you're not a bot" in err:
+
+    # YouTube bot verification or explicit request rejection.
+    bot_indicators = (
+        "sign in to confirm you're not a bot",
+        "sign in to confirm you’re not a bot",
+        "confirm you're not a bot",
+        "confirm you’re not a bot",
+        "bot verification",
+    )
+
+    if any(indicator in err for indicator in bot_indicators):
         return ContentAccessError(
-            "YouTube bot verification triggered. This server's IP address has been temporarily restricted by YouTube. "
-            "Please try again in a few moments or try another video link."
+            "YouTube requires additional verification for this request. "
+            "The server could not retrieve the media. Please try again "
+            "later or use another supported source."
         )
-    if any(k in err for k in ["private", "sign in", "login", "members-only", "drm", "copyright", "protected"]):
-        return ContentAccessError(f"Access restricted: {error_msg.split(';')[-1].strip()}")
-    if any(k in err for k in ["not found", "404", "unavailable", "removed", "deleted"]):
-        return ContentNotFoundError("The requested content could not be found or was removed.")
-    return AnalysisFailedError(f"Platform extraction error: {error_msg}")
+
+    # Authentication and access restrictions.
+    restricted_indicators = (
+        "private video",
+        "login required",
+        "members-only",
+        "age-restricted",
+        "age verification",
+        "drm",
+        "protected video",
+        "not available in your country",
+    )
+
+    if any(indicator in err for indicator in restricted_indicators):
+        return ContentAccessError(
+            "This media is restricted or requires additional access "
+            "permissions."
+        )
+
+    # Content that no longer exists.
+    unavailable_indicators = (
+        "video unavailable",
+        "video is unavailable",
+        "has been removed",
+        "video has been removed",
+        "content not available",
+    )
+
+    if any(indicator in err for indicator in unavailable_indicators):
+        return ContentNotFoundError(
+            "The requested content is unavailable or has been removed."
+        )
+
+    # Preserve the original exception text for server-side diagnostics.
+    return AnalysisFailedError(
+        f"Media extraction failed: {error_msg[:500]}"
+    )
 
 def get_base_ydl_opts() -> dict:
+    """
+    Return yt-dlp options shared by metadata extraction and downloads.
+
+    Let yt-dlp select compatible YouTube clients by default rather than
+    forcing a fixed list of clients that may become incompatible.
+    """
     opts: Dict[str, Any] = {
-        'quiet': True,
-        'no_warnings': True,
-        'no_color': True,
-        'socket_timeout': 30,
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Sec-Fetch-Mode': 'navigate',
-        },
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web_embedded', 'mweb', 'ios'],
-                'player_skip': ['webpage', 'configs'],
+        "quiet": True,
+        "no_warnings": False,
+        "no_color": True,
+        "socket_timeout": 30,
+        "retries": 2,
+        "extractor_retries": 2,
+        "fragment_retries": 2,
+        "noplaylist": True,
+        "js_runtimes": {
+            "node": {
+                "path": "node"
             }
-        }
+        },
     }
 
-    # Optional server-side cookie configuration for YouTube if provided by host/admin
+    # Optional cookies exported by the account owner.
+    # Never commit cookies or expose them to frontend JavaScript.
     cookie_file = os.getenv("COOKIES_FILE_PATH")
+
     if not cookie_file:
-        for p in ["/app/cookies.txt", "cookies.txt", "backend/cookies.txt"]:
-            if Path(p).exists():
-                cookie_file = p
+        for candidate in (
+            "/app/cookies.txt",
+            "cookies.txt",
+            "backend/cookies.txt",
+        ):
+            if Path(candidate).is_file():
+                cookie_file = candidate
                 break
 
-    # If YOUTUBE_COOKIES_CONTENT is provided in environment variables, write to a temp file
     cookies_content = os.getenv("YOUTUBE_COOKIES_CONTENT")
+
     if cookies_content and not cookie_file:
-        temp_cookie_path = Path("/tmp/yt_cookies.txt") if os.name != "nt" else Path("./temp_yt_cookies.txt")
+        temp_cookie_path = (
+            Path("/tmp/yt_cookies.txt")
+            if os.name != "nt"
+            else Path(os.environ.get("TEMP", ".")) / "yt_cookies.txt"
+        )
+
         try:
-            temp_cookie_path.write_text(cookies_content.strip(), encoding="utf-8")
+            temp_cookie_path.write_text(
+                cookies_content.strip() + "\n",
+                encoding="utf-8",
+            )
             cookie_file = str(temp_cookie_path)
-        except Exception:
-            pass
+        except OSError:
+            # Do not log cookie contents.
+            raise RuntimeError(
+                "Unable to prepare the configured YouTube cookies file."
+            )
 
-    # Optional proxy support if configured in environment
-    proxy = os.getenv("PROXY_URL") or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+    if cookie_file:
+        cookie_path = Path(cookie_file)
+
+        if not cookie_path.is_file():
+            raise RuntimeError(
+                "COOKIES_FILE_PATH points to a file that does not exist."
+            )
+
+        opts["cookiefile"] = str(cookie_path)
+
+    # Configure a proxy only when explicitly supplied by the administrator.
+    # A proxy does not guarantee that YouTube will accept the request.
+    proxy = os.getenv("PROXY_URL")
+
     if proxy:
-        opts['proxy'] = proxy
-
-    if cookie_file and Path(cookie_file).exists():
-        opts['cookiefile'] = cookie_file
+        opts["proxy"] = proxy
 
     return opts
 
@@ -274,7 +346,10 @@ class YtDlpAdapterHelper:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download([url])
 
-            await asyncio.to_thread(run_ydl)
+            try:
+                await asyncio.to_thread(run_ydl)
+            except yt_dlp.utils.DownloadError as exc:
+                raise map_ytdlp_error(str(exc)) from exc
 
             # Locate the generated mp3
             final_path = storage_dir / "download_audio.mp3"
@@ -333,7 +408,10 @@ class YtDlpAdapterHelper:
                 ydl.download([url])
 
         await progress_callback(10.0, "Initializing video download...")
-        await asyncio.to_thread(run_video_ydl)
+        try:
+            await asyncio.to_thread(run_video_ydl)
+        except yt_dlp.utils.DownloadError as exc:
+            raise map_ytdlp_error(str(exc)) from exc
 
         final_path = storage_dir / "download_video.mp4"
         target_path = storage_dir / out_filename

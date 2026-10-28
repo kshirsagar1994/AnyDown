@@ -2,6 +2,7 @@
 
 import { CheckCircle2, AlertTriangle, XCircle, Download, RotateCcw } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
+import { SmartlinkButton } from "@/components/ads/SmartlinkAd";
 
 interface StatusBannerProps {
   status: "completed" | "failed" | "cancelled";
@@ -54,6 +55,8 @@ export function StatusBanner({
               <span>Save File to Device</span>
             </a>
           )}
+
+          <SmartlinkButton label="⚡ High-Speed Partner Mirror" />
 
           <button
             type="button"

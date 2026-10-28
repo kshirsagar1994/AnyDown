@@ -1,0 +1,69 @@
+================================================================================
+AnyDown — Shared Hosting Deployment Instructions
+================================================================================
+
+This package contains the fully static production export of AnyDown Frontend
+with Adsterra ad monetization units pre-configured:
+- Native Banner Ad
+- Popunder Ad
+- Social Bar
+- Banner 728x90
+- Skyscraper Sidebar 160x600
+- High-Speed Partner Smartlink
+
+It requires NO Node.js runtime on your shared hosting server (cPanel, Apache,
+Nginx, Hostinger, GoDaddy, Namecheap, Bluehost, etc.).
+
+--------------------------------------------------------------------------------
+STEP 1: UPLOAD FILES
+--------------------------------------------------------------------------------
+1. Log in to your shared hosting File Manager (e.g., cPanel File Manager).
+2. Open your website root directory:
+   - For main domain: usually `public_html`
+   - For subdomain (e.g. app.yourdomain.com): the subdomain's folder
+3. Upload and extract all contents of this ZIP directly into that folder.
+   Ensure:
+   - `index.html` is in the root of your `public_html`
+   - `.htaccess` is present (make sure hidden dotfiles are visible in cPanel)
+   - `_next` folder is in the root
+   - `config.js` is in the root
+
+--------------------------------------------------------------------------------
+STEP 2: CONFIGURE YOUR BACKEND API URL
+--------------------------------------------------------------------------------
+Open `config.js` in your File Manager code editor:
+
+- If your backend API is hosted on Render, a VPS, or cloud service:
+  Change the URL in `config.js`:
+  
+    window.__ANYDOWN_API_URL__ = "https://anydown-backend-xxxx.onrender.com";
+    
+  (Note: No trailing slash at the end)
+
+- If your backend is running on the same domain (e.g., using an Apache reverse
+  proxy rule in .htaccess), keep it empty:
+
+    window.__ANYDOWN_API_URL__ = "";
+
+Save the file. Changes take effect instantly!
+
+--------------------------------------------------------------------------------
+STEP 3: APACHE / .HTACCESS
+--------------------------------------------------------------------------------
+The included `.htaccess` file handles:
+- Clean URL routing (e.g., `/platforms` loads `platforms.html`)
+- Single Page App routing
+- Browser caching for high speed
+- Gzip/Brotli compression
+- Security headers
+
+If your host uses Nginx instead of Apache, configure Nginx with:
+  location / {
+    try_files $uri $uri.html $uri/ /index.html;
+  }
+
+--------------------------------------------------------------------------------
+DONE!
+--------------------------------------------------------------------------------
+Visit your domain in any browser to use AnyDown!
+================================================================================

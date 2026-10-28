@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MediaFormat, MediaType } from "@/types";
 import { formatBytes } from "@/lib/utils";
 import { Film, Music, Image as ImageIcon, Download, CheckCircle2, AlertCircle } from "lucide-react";
+import { SmartlinkButton } from "@/components/ads/SmartlinkAd";
 
 interface FormatSelectorProps {
   formats: MediaFormat[];
@@ -175,15 +176,18 @@ export function FormatSelector({ formats, onStartDownload, isStartingDownload }:
           </strong>
         </div>
 
-        <button
-          type="button"
-          onClick={handleDownloadClick}
-          disabled={!selectedFormatId || isStartingDownload}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-        >
-          <Download className="w-4 h-4" />
-          <span>{isStartingDownload ? "Preparing Job..." : "Download File"}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+          <SmartlinkButton label="⚡ High-Speed Mirror" />
+          <button
+            type="button"
+            onClick={handleDownloadClick}
+            disabled={!selectedFormatId || isStartingDownload}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+          >
+            <Download className="w-4 h-4" />
+            <span>{isStartingDownload ? "Preparing Job..." : "Download File"}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

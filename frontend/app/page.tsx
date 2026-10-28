@@ -10,6 +10,9 @@ import { StatusBanner } from "@/components/StatusBanner";
 import { AnalyzeResponse, UXState, DownloadJobResponse } from "@/types";
 import { analyzeUrl, createDownloadJob, cancelJob, subscribeToJobEvents, ApiError } from "@/lib/api";
 import { Shield, Sparkles, Check, DownloadCloud, Zap, Lock } from "lucide-react";
+import { Banner728x90, Banner160x600 } from "@/components/ads/AdBanners";
+import { AdNativeBanner } from "@/components/ads/AdNativeBanner";
+import { SmartlinkBanner } from "@/components/ads/SmartlinkAd";
 
 export default function HomePage() {
   const [uxState, setUxState] = useState<UXState>("idle");
@@ -145,9 +148,19 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center">
+    <div className="flex-1 flex flex-col items-center relative w-full overflow-x-hidden">
+      {/* Flanking Skyscraper Ad (Left - 160x600) on Desktop */}
+      <aside className="hidden 2xl:block fixed left-4 top-28 z-20" aria-label="Sidebar Advertisement">
+        <Banner160x600 />
+      </aside>
+
+      {/* Flanking Skyscraper Ad (Right - 160x600) on Desktop */}
+      <aside className="hidden 2xl:block fixed right-4 top-28 z-20" aria-label="Sidebar Advertisement">
+        <Banner160x600 />
+      </aside>
+
       {/* Hero Section */}
-      <section className="w-full max-w-4xl mx-auto px-4 pt-10 sm:pt-16 pb-8 text-center space-y-6">
+      <section className="w-full max-w-4xl mx-auto px-4 pt-8 sm:pt-14 pb-4 text-center space-y-5">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-semibold shadow-sm">
           <Sparkles className="w-3.5 h-3.5 text-brand-500" />
           <span>Universal Social & Video Media Downloader</span>
@@ -171,6 +184,16 @@ export default function HomePage() {
             isLoading={uxState === "analyzing"}
             initialUrl={lastUrl}
           />
+        </div>
+
+        {/* Smartlink Partner Notice */}
+        <div className="max-w-2xl mx-auto">
+          <SmartlinkBanner />
+        </div>
+
+        {/* Top 728x90 Banner Ad */}
+        <div className="w-full flex justify-center py-2">
+          <Banner728x90 />
         </div>
       </section>
 
@@ -208,6 +231,9 @@ export default function HomePage() {
               onStartDownload={handleStartDownload}
               isStartingDownload={isStartingDownload}
             />
+
+            {/* Native Banner Ad below results */}
+            <AdNativeBanner />
           </div>
         )}
 
@@ -226,24 +252,32 @@ export default function HomePage() {
 
         {/* State: Completed / Failed / Cancelled Banner */}
         {(uxState === "completed" || uxState === "failed" || uxState === "cancelled") && (
-          <StatusBanner
-            status={uxState}
-            message={
-              uxState === "failed"
-                ? errorMessage
-                : currentJob?.message || null
-            }
-            downloadUrl={currentJob?.download_url}
-            filename={currentJob?.filename}
-            fileSize={currentJob?.file_size}
-            onRetry={lastUrl ? () => handleAnalyze(lastUrl) : undefined}
-            onReset={handleReset}
-          />
+          <div className="space-y-6">
+            <StatusBanner
+              status={uxState}
+              message={
+                uxState === "failed"
+                  ? errorMessage
+                  : currentJob?.message || null
+              }
+              downloadUrl={currentJob?.download_url}
+              filename={currentJob?.filename}
+              fileSize={currentJob?.file_size}
+              onRetry={lastUrl ? () => handleAnalyze(lastUrl) : undefined}
+              onReset={handleReset}
+            />
+
+            {/* Native Banner Ad below completed state */}
+            <AdNativeBanner />
+          </div>
         )}
 
         {/* Platform Grid on Idle */}
         {uxState === "idle" && (
-          <div className="pt-6 space-y-10 animate-in fade-in">
+          <div className="pt-4 space-y-8 animate-in fade-in">
+            {/* Native Banner Ad on Home */}
+            <AdNativeBanner />
+
             <PlatformIcons onSelectExample={(url) => handleAnalyze(url)} />
 
             {/* Feature Highlights Grid */}
@@ -283,6 +317,11 @@ export default function HomePage() {
                   We respect access controls. We never collect passwords, bypass private accounts, or defeat DRM protections.
                 </p>
               </div>
+            </div>
+
+            {/* Bottom 728x90 Banner Ad */}
+            <div className="w-full flex justify-center pt-6">
+              <Banner728x90 />
             </div>
           </div>
         )}

@@ -18,3 +18,4 @@ services:
         value: 524288000
       - key: FILE_RETENTION_SECONDS
         value: 900
+

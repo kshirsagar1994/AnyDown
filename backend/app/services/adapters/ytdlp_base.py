@@ -19,23 +19,68 @@ import httpx
 
 def map_ytdlp_error(error_msg: str) -> Exception:
     err = error_msg.lower()
+    if "sign in to confirm you’re not a bot" in err or "sign in to confirm you're not a bot" in err:
+        return ContentAccessError(
+            "YouTube bot verification triggered. This server's IP address has been temporarily restricted by YouTube. "
+            "Please try again in a few moments or try another video link."
+        )
     if any(k in err for k in ["private", "sign in", "login", "members-only", "drm", "copyright", "protected"]):
         return ContentAccessError(f"Access restricted: {error_msg.split(';')[-1].strip()}")
     if any(k in err for k in ["not found", "404", "unavailable", "removed", "deleted"]):
         return ContentNotFoundError("The requested content could not be found or was removed.")
     return AnalysisFailedError(f"Platform extraction error: {error_msg}")
 
+def get_base_ydl_opts() -> dict:
+    opts: Dict[str, Any] = {
+        'quiet': True,
+        'no_warnings': True,
+        'no_color': True,
+        'socket_timeout': 30,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Sec-Fetch-Mode': 'navigate',
+        },
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web_embedded', 'mweb', 'ios'],
+                'player_skip': ['webpage', 'configs'],
+            }
+        }
+    }
+
+    # Optional server-side cookie configuration for YouTube if provided by host/admin
+    cookie_file = os.getenv("COOKIES_FILE_PATH")
+    if not cookie_file:
+        for p in ["/app/cookies.txt", "cookies.txt", "backend/cookies.txt"]:
+            if Path(p).exists():
+                cookie_file = p
+                break
+
+    # If YOUTUBE_COOKIES_CONTENT is provided in environment variables, write to a temp file
+    cookies_content = os.getenv("YOUTUBE_COOKIES_CONTENT")
+    if cookies_content and not cookie_file:
+        temp_cookie_path = Path("/tmp/yt_cookies.txt") if os.name != "nt" else Path("./temp_yt_cookies.txt")
+        try:
+            temp_cookie_path.write_text(cookies_content.strip(), encoding="utf-8")
+            cookie_file = str(temp_cookie_path)
+        except Exception:
+            pass
+
+    if cookie_file and Path(cookie_file).exists():
+        opts['cookiefile'] = cookie_file
+
+    return opts
+
 class YtDlpAdapterHelper:
     @staticmethod
     def extract_info(url: str) -> dict:
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
+        ydl_opts = get_base_ydl_opts()
+        ydl_opts.update({
             'skip_download': True,
-            'no_color': True,
-            'socket_timeout': 20,
             'ignoreerrors': False,
-        }
+        })
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -208,18 +253,17 @@ class YtDlpAdapterHelper:
                         progress_callback(85.0, "Converting to MP3 with FFmpeg..."), loop
                     )
 
-            ydl_opts = {
+            ydl_opts = get_base_ydl_opts()
+            ydl_opts.update({
                 'format': 'bestaudio/best',
                 'outtmpl': out_template,
-                'quiet': True,
-                'no_warnings': True,
                 'progress_hooks': [progress_hook],
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-            }
+            })
 
             def run_ydl():
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -271,14 +315,13 @@ class YtDlpAdapterHelper:
                     progress_callback(90.0, "Finalizing MP4 container with FFmpeg..."), loop
                 )
 
-        ydl_opts = {
+        ydl_opts = get_base_ydl_opts()
+        ydl_opts.update({
             'format': format_spec,
             'outtmpl': out_template,
             'merge_output_format': 'mp4',
-            'quiet': True,
-            'no_warnings': True,
             'progress_hooks': [video_progress_hook],
-        }
+        })
 
         def run_video_ydl():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

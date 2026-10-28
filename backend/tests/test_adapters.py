@@ -37,3 +37,12 @@ def test_capabilities_export():
         assert c.policy_notice
         assert len(c.supported_formats) > 0
 
+def test_ytdlp_base_opts_has_player_clients():
+    from app.services.adapters.ytdlp_base import get_base_ydl_opts
+    opts = get_base_ydl_opts()
+    assert 'extractor_args' in opts
+    yt_args = opts['extractor_args'].get('youtube', {})
+    assert 'android' in yt_args.get('player_client', [])
+    assert 'webpage' in yt_args.get('player_skip', [])
+    assert 'User-Agent' in opts.get('http_headers', {})
+

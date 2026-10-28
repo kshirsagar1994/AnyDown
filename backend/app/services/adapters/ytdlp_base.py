@@ -68,6 +68,11 @@ def get_base_ydl_opts() -> dict:
         except Exception:
             pass
 
+    # Optional proxy support if configured in environment
+    proxy = os.getenv("PROXY_URL") or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+    if proxy:
+        opts['proxy'] = proxy
+
     if cookie_file and Path(cookie_file).exists():
         opts['cookiefile'] = cookie_file
 

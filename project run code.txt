@@ -1,4 +1,8 @@
-# Run Backend:
+# Live Production Backend (Render):
+# https://anydown-backend-fo0t.onrender.com
+# Health: https://anydown-backend-fo0t.onrender.com/api/v1/health
+
+# Run Backend Locally:
 cd c:\Users\ajaya\OneDrive\Desktop\AnyDown\backend
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 

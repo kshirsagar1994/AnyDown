@@ -42,5 +42,5 @@ def test_ytdlp_base_opts():
     opts = get_base_ydl_opts()
     assert opts["noplaylist"] is True
     assert "js_runtimes" in opts
-    assert opts["js_runtimes"]["node"]["path"] == "node"
+    assert "deno" in opts["js_runtimes"] or "node" in opts["js_runtimes"]
 

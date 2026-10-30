@@ -143,7 +143,10 @@ class FacebookAdapter(BaseAdapter):
 class SnapchatAdapter(BaseAdapter):
     id = "snapchat"
     name = "Snapchat"
-    hostname_patterns = ["snapchat.com", "www.snapchat.com", "story.snapchat.com"]
+    hostname_patterns = [
+        "snapchat.com", "www.snapchat.com", "story.snapchat.com",
+        "t.snapchat.com", "spotlight.snapchat.com"
+    ]
     supported_content_types = ["spotlight", "public_stories", "video", "image"]
     supported_formats = ["mp4", "jpg"]
     enabled = True

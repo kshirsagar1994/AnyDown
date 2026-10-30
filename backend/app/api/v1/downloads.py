@@ -33,12 +33,24 @@ async def download_final_file(job_id: str):
             detail="File is not yet ready or job has not completed."
         )
 
+    import urllib.parse
+    import re
+
+    # Remove any non-ASCII characters for RFC fallback header
+    raw_name = job.filename or "media_download"
+    safe_ascii_filename = re.sub(r'[^\x20-\x7e]', '_', raw_name)
+    safe_ascii_filename = re.sub(r'[\"\'\\/]', '', safe_ascii_filename).strip()
+    if not safe_ascii_filename:
+        safe_ascii_filename = "media_download"
+
+    encoded_filename = urllib.parse.quote(raw_name)
+
     return FileResponse(
         path=str(job.file_path),
-        filename=job.filename or "media_download",
+        filename=safe_ascii_filename,
         media_type=job.mime_type or "application/octet-stream",
         headers={
-            "Content-Disposition": f'attachment; filename="{job.filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}',
             "Cache-Control": "no-cache, no-store, must-revalidate"
         }
     )

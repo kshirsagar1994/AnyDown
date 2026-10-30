@@ -34,14 +34,14 @@ class InstagramAdapter(BaseAdapter):
     async def _analyze_image_post(self, url: str) -> AnalyzeResponse:
         # Fallback for photo / image posts using gallery-dl
         cookie_file = os.getenv("COOKIES_FILE_PATH", "/app/secrets/cookies.txt")
-        cmd = ["gallery-dl", "-j"]
+        cmd = ["gallery-dl", "-j", "--retries", "0"]
         if Path(cookie_file).is_file():
             cmd.extend(["--cookies", str(cookie_file)])
         cmd.append(url)
 
         def run_gallery_dl():
             import subprocess
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
             return res.returncode, res.stdout, res.stderr
 
         try:
@@ -130,14 +130,14 @@ class InstagramAdapter(BaseAdapter):
         if content_type == "image" or format_id == "image-jpg":
             await progress_callback(20.0, "Downloading Instagram image...")
             cookie_file = os.getenv("COOKIES_FILE_PATH", "/app/secrets/cookies.txt")
-            cmd = ["gallery-dl", "--directory", str(storage_dir)]
+            cmd = ["gallery-dl", "--retries", "0", "--directory", str(storage_dir)]
             if Path(cookie_file).is_file():
                 cmd.extend(["--cookies", str(cookie_file)])
             cmd.append(url)
 
             def run_dl():
                 import subprocess
-                return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+                return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
 
             res = await asyncio.to_thread(run_dl)
             if res.returncode != 0 and "429" in res.stderr:

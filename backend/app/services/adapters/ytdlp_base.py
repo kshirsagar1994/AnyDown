@@ -14,7 +14,7 @@ from app.core.exceptions import (
 )
 from app.schemas.analysis import AnalyzeResponse, MediaFormat, MediaMetadata
 from app.services.storage_service import sanitize_filename, MIME_TYPES, validate_file_magic_number
-from app.services.conversion_service import convert_to_mp3, convert_to_jpg
+from app.services.conversion_service import convert_to_mp3, convert_to_jpg, convert_or_merge_to_mp4
 import httpx
 
 def map_ytdlp_error(error_msg: str) -> Exception:
@@ -203,41 +203,42 @@ class YtDlpAdapterHelper:
         available_formats: List[MediaFormat] = []
         resolution_seen = set()
 
-        # Target standard resolutions: 2160p (4K), 1440p (2K), 1080p, 720p, 480p, 360p
-        # We sort by resolution descending
+        # Target standard resolutions or any video streams available
         video_streams = [
             f for f in raw_formats
-            if f.get("vcodec") != "none" and (f.get("height") or 0) > 0
+            if f.get("vcodec") != "none"
         ]
         video_streams.sort(key=lambda x: (x.get("height") or 0, x.get("tbr") or 0), reverse=True)
 
         for f in video_streams:
             h = f.get("height")
-            if not h:
-                continue
-
-            # Standardize quality label
-            if h >= 2160:
-                label = "2160p (4K)"
-                key = 2160
-            elif h >= 1440:
-                label = "1440p (2K)"
-                key = 1440
-            elif h >= 1080:
-                label = "1080p Full HD"
-                key = 1080
-            elif h >= 720:
-                label = "720p HD"
-                key = 720
-            elif h >= 480:
-                label = "480p SD"
-                key = 480
-            elif h >= 360:
-                label = "360p"
-                key = 360
+            if h and h > 0:
+                if h >= 2160:
+                    label = "2160p (4K)"
+                    key = 2160
+                elif h >= 1440:
+                    label = "1440p (2K)"
+                    key = 1440
+                elif h >= 1080:
+                    label = "1080p Full HD"
+                    key = 1080
+                elif h >= 720:
+                    label = "720p HD"
+                    key = 720
+                elif h >= 480:
+                    label = "480p SD"
+                    key = 480
+                elif h >= 360:
+                    label = "360p"
+                    key = 360
+                else:
+                    label = f"{h}p"
+                    key = h
             else:
-                label = f"{h}p"
-                key = h
+                format_id_raw = str(f.get("format_id") or "video")
+                format_note = f.get("format_note") or f.get("quality") or "HD"
+                label = f"Video - {format_note} (MP4)"
+                key = format_id_raw
 
             if key not in resolution_seen:
                 resolution_seen.add(key)
@@ -255,6 +256,25 @@ class YtDlpAdapterHelper:
                         note="MP4 Container (H.264 / AAC)"
                     )
                 )
+
+        # Fallback if raw_formats did not populate video but media contains video
+        if not any(f.media_type == "video" for f in available_formats) and (
+            info.get("url") or raw_formats or info.get("duration")
+        ):
+            available_formats.insert(
+                0,
+                MediaFormat(
+                    format_id="video-best",
+                    media_type="video",
+                    container="mp4",
+                    quality_label="Best Quality Video (MP4)",
+                    width=info.get("width"),
+                    height=info.get("height"),
+                    estimated_size_bytes=info.get("filesize") or info.get("filesize_approx"),
+                    requires_conversion=True,
+                    note="Standard MP4 Video"
+                )
+            )
 
         # Audio export format if any audio exists
         has_audio = any(f.get("acodec") != "none" for f in raw_formats) or len(raw_formats) > 0
@@ -385,11 +405,13 @@ class YtDlpAdapterHelper:
 
         # Otherwise Video Download
         res_match = format_id.replace("video-", "")
-        try:
+        if res_match.isdigit():
             target_h = int(res_match)
             format_spec = f"bestvideo[height<={target_h}]+bestaudio/best[height<={target_h}]/best"
-        except ValueError:
+        elif res_match in ("best", "default"):
             format_spec = "bestvideo+bestaudio/best"
+        else:
+            format_spec = f"{res_match}/bestvideo+bestaudio/best"
 
         out_filename = sanitize_filename(title, "mp4")
         out_template = str(storage_dir / "download_video.%(ext)s")
@@ -433,11 +455,28 @@ class YtDlpAdapterHelper:
                 target_path.unlink()
             final_path.rename(target_path)
         else:
-            mp4s = list(storage_dir.glob("*.mp4"))
-            if mp4s:
-                mp4s[0].rename(target_path)
+            downloaded_videos = [
+                p for p in storage_dir.glob("download_video.*")
+                if p.is_file() and not p.name.endswith(".part")
+            ]
+            if not downloaded_videos:
+                downloaded_videos = [
+                    p for p in storage_dir.glob("*")
+                    if p.is_file() and p.suffix.lower() in (".mp4", ".webm", ".mkv", ".mov") and p != target_path
+                ]
+
+            if downloaded_videos:
+                src_video = downloaded_videos[0]
+                if src_video.suffix.lower() == ".mp4":
+                    if target_path.exists():
+                        target_path.unlink()
+                    src_video.rename(target_path)
+                else:
+                    await convert_or_merge_to_mp4(src_video, target_path)
+                    if src_video.exists():
+                        src_video.unlink()
             else:
-                raise ConversionError("MP4 video container was not generated.")
+                raise ConversionError("MP4 video was not generated successfully.")
 
         validate_file_magic_number(target_path, "mp4")
         await progress_callback(100.0, "Video finalized and ready")

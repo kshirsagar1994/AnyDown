@@ -4,7 +4,7 @@ const isExport = process.env.NEXT_EXPORT === "true";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  ...(isExport ? { output: "export" as const } : {}),
+  ...(isExport ? { output: "export" as const } : { output: "standalone" as const }),
   images: {
     unoptimized: true,
     remotePatterns: [

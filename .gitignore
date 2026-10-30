@@ -56,3 +56,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# AWS & Deployment keys/bundles
+*.pem
+*.ppk
+*.key
+anydown-deploy.tar.gz
+
+

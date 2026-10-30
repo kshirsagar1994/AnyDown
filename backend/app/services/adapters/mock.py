@@ -142,9 +142,9 @@ class MockAdapter(BaseAdapter):
             w = int(h * 16 / 9)
             cmd = [
                 "ffmpeg", "-y",
-                "-f", "lavfi", "-i", f"testsrc=duration=2:size={w}x{h}:rate=30",
+                "-f", "lavfi", "-i", f"testsrc=duration=2:size={w}x{h}:rate=24",
                 "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "ultrafast", "-threads", "1", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-movflags", "+faststart",
                 str(out_path)
             ]

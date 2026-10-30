@@ -45,6 +45,7 @@ app.add_middleware(
     allow_credentials=not allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Exception handlers

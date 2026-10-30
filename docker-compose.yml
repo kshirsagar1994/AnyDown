@@ -15,9 +15,10 @@ services:
       - TEMP_DIR=/app/tmp
       - MAX_DOWNLOAD_BYTES=524288000
       - FILE_RETENTION_SECONDS=900
+      - COOKIES_FILE_PATH=/app/secrets/cookies.txt
     volumes:
       - anydown_tmp:/app/tmp
-      - ./secrets:/app/secrets:ro
+      - ./secrets:/app/secrets:rw
 
   frontend:
     build:

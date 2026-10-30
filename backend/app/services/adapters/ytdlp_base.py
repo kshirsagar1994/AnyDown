@@ -140,7 +140,19 @@ def get_base_ydl_opts() -> dict:
                 "COOKIES_FILE_PATH points to a file that does not exist."
             )
 
-        opts["cookiefile"] = str(cookie_path)
+        try:
+            temp_cookie = (
+                Path("/tmp/active_cookies.txt")
+                if os.name != "nt"
+                else Path(os.environ.get("TEMP", ".")) / "active_cookies.txt"
+            )
+            temp_cookie.write_text(
+                cookie_path.read_text(encoding="utf-8", errors="ignore"),
+                encoding="utf-8",
+            )
+            opts["cookiefile"] = str(temp_cookie)
+        except Exception:
+            opts["cookiefile"] = str(cookie_path)
 
     # Configure a proxy only when explicitly supplied by the administrator.
     # A proxy does not guarantee that YouTube will accept the request.

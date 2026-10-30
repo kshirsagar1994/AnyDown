@@ -17,6 +17,7 @@ services:
       - FILE_RETENTION_SECONDS=900
     volumes:
       - anydown_tmp:/app/tmp
+      - ./secrets:/app/secrets:ro
 
   frontend:
     build:

@@ -102,6 +102,7 @@ def get_base_ydl_opts() -> dict:
 
     if not cookie_file:
         for candidate in (
+            "/app/secrets/cookies.txt",
             "/app/cookies.txt",
             "cookies.txt",
             "backend/cookies.txt",

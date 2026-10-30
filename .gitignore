@@ -61,5 +61,7 @@ Thumbs.db
 *.ppk
 *.key
 anydown-deploy.tar.gz
+secrets/
+cookies.txt
 
 
